@@ -8,12 +8,11 @@ namespace MyAPI.Models
         [Required]
         [StringLength(100)]
         public string? Descricao { get; set; }
-        [Column(TypeName = "decimal(18, 2")]
+        [Column(TypeName = "decimal(18, 2)")]
         public decimal Preco { get; set; }
         public string? ImagemUrl { get; set; }
         public float Estoque { get; set; }
-        public DateTime DactaCadastro { get; set; }
-        [Key]
+        public DateTime DataCadastro { get; set; }
         public int? CategoriaId { get; set; }
         public Categoria? Categoria {  get; set; } 
     }

@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MyAPI.Models
 {
@@ -6,6 +7,7 @@ namespace MyAPI.Models
     {
         [Key]
         [Required]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
         [Required]
@@ -14,5 +16,10 @@ namespace MyAPI.Models
 
         public DateTime CreateAt { get; set; }
         public DateTime? UpdateAt { get; set; }
+
+        public EntityBase()
+        {
+            CreateAt = DateTime.Now;  // Inicializa CreateAt com a data e hora atual
+        }
     }
 }
