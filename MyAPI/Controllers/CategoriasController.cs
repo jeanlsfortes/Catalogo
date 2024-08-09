@@ -11,10 +11,12 @@ namespace MyAPI.Controllers
     public class CategoriasController : Controller
     {
         private readonly AppDbContext _context;
+        private readonly ILogger<CategoriasController> _logger;
 
-        public CategoriasController(AppDbContext context)
+        public CategoriasController(AppDbContext context, ILogger<CategoriasController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         [HttpGet("GetAll")]
@@ -68,6 +70,7 @@ namespace MyAPI.Controllers
 
                 if (categoria == null)
                 {
+                    _logger.LogWarning($"Categoria com id= {id} não encontrada...");
                     return NotFound($"Categoria com id= {id} não encontrada...");
                 }
                 return Ok(categoria);
@@ -85,7 +88,10 @@ namespace MyAPI.Controllers
             try
             {
                 if (categoriaDto is null)
+                {
+                    _logger.LogWarning($"Dados inválidos...");
                     return BadRequest("Dados inválidos");
+                }
 
                 _context.Add(categoriaDto);
                 _context.SaveChanges();
@@ -151,8 +157,10 @@ namespace MyAPI.Controllers
 
                 if (categoria == null)
                 {
+                    _logger.LogWarning($"Categoria com id={id} não encontrada...");
                     return NotFound($"Categoria com id={id} não encontrada...");
                 }
+
                 _context.Categorias.Remove(categoria);
                 _context.SaveChanges();
                 return Ok(categoria);
