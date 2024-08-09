@@ -15,17 +15,12 @@ namespace MyAPI.Context
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
         //dbSet representa a coleção de entidades no contexto que podem ser consultadas - TABELAS
-        public DbSet<Categoria>? Categorias { get; set; }
-        public DbSet<Produto>? Produtos { get; set; }
+        public DbSet<Categoria> Categorias { get; set; }
+        public DbSet<Produto> Produtos { get; set; }
 
         // ao aplicar override o método original será reescrito pelo novo método 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // Configurando a precisão e escala do campo 'Preco'
-            //modelBuilder.Entity<Produto>()
-            //    .Property(p => p.Preco)
-            //    .HasPrecision(18, 2); // Define decimal(18,2)
-
             base.OnModelCreating(modelBuilder);
         }
     }
