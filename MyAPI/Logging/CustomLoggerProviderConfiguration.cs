@@ -1,4 +1,4 @@
-﻿namespace APICatalogo.Logging;
+﻿namespace MyAPI.Logging;
 
 public class CustomLoggerProviderConfiguration
 {

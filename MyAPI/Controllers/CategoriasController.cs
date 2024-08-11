@@ -2,7 +2,12 @@
 using Microsoft.EntityFrameworkCore;
 using MyAPI.Context;
 using MyAPI.DTO;
+using MyAPI.DTOs.Mappings;
 using MyAPI.Models;
+using MyAPI.Pagination;
+using MyAPI.Repositories;
+using Newtonsoft.Json;
+using X.PagedList;
 
 namespace MyAPI.Controllers
 {
@@ -10,167 +15,138 @@ namespace MyAPI.Controllers
     [Route("[controller]")]
     public class CategoriasController : Controller
     {
-        private readonly AppDbContext _context;
+        private readonly IUnitOfWork _uof;
         private readonly ILogger<CategoriasController> _logger;
 
-        public CategoriasController(AppDbContext context, ILogger<CategoriasController> logger)
+        public CategoriasController(IUnitOfWork uof, ILogger<CategoriasController> logger)
         {
-            _context = context;
             _logger = logger;
-        }
-
-        [HttpGet("GetAll")]
-        public async Task<ActionResult<IEnumerable<Categoria>>> GetAll()
-        {
-            var categorias = await _context.Categorias.ToListAsync();
-
-            if (categorias is null)
-            {
-                return NotFound();
-            }
-
-            return Ok(categorias);
-        }
-
-        [HttpGet("produtos")]
-        public ActionResult<IEnumerable<Categoria>> GetCategoriasProdutos()
-        {
-            try
-            {
-                return _context.Categorias.Include(p => p.Produtos).ToList();
-            }
-            catch (Exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    "Ocorreu um problema ao buscar as informações!.");
-            }
+            _uof = uof;
         }
 
         [HttpGet]
-        public ActionResult<IEnumerable<Categoria>> Get()
+        public async Task<ActionResult<IEnumerable<CategoriaDTO>>> Get()
         {
-            try
-            {
-                return _context.Categorias.AsNoTracking().ToList();
-            }
-            catch (Exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    "Ocorreu um problema ao buscar as informações!.");
-            }
+            var categorias = await _uof.CategoriaRepository.GetAllAsync();
 
+            if (categorias is null)
+                return NotFound("Não existem categorias...");
+
+            var categoriasDto = categorias.ToCategoriaDTOList();
+
+            return Ok(categoriasDto);
+        }
+
+        [HttpGet("pagination")]
+        public async Task<ActionResult<IEnumerable<CategoriaDTO>>> Get([FromQuery]
+                               CategoriasParameters categoriasParameters)
+        {
+            var categorias = await _uof.CategoriaRepository.GetCategoriasAsync(categoriasParameters);
+
+            return ObterCategorias(categorias);
+        }
+
+        [HttpGet("filter/nome/pagination")]
+        public async Task<ActionResult<IEnumerable<CategoriaDTO>>> GetCategoriasFiltradas(
+                                       [FromQuery] CategoriasFiltroNome categoriasFiltro)
+        {
+            var categoriasFiltradas = await _uof.CategoriaRepository
+                                         .GetCategoriasFiltroNomeAsync(categoriasFiltro);
+
+            return ObterCategorias(categoriasFiltradas);
+
+        }
+
+        private ActionResult<IEnumerable<CategoriaDTO>> ObterCategorias(IPagedList<Categoria> categorias)
+        {
+            var metadata = new
+            {
+                categorias.Count,
+                categorias.PageSize,
+                categorias.PageCount,
+                categorias.TotalItemCount,
+                categorias.HasNextPage,
+                categorias.HasPreviousPage
+            };
+
+            Response.Headers.Append("X-Pagination", JsonConvert.SerializeObject(metadata));
+            var categoriasDto = categorias.ToCategoriaDTOList();
+            return Ok(categoriasDto);
         }
 
         [HttpGet("{id:int}", Name = "ObterCategoria")]
-        public ActionResult<Categoria> Get(int id)
+        public async Task<ActionResult<CategoriaDTO>> Get(int id)
         {
-            try
-            {
-                var categoria = _context.Categorias.FirstOrDefault(p => p.Id == id);
+            var categoria = await _uof.CategoriaRepository.GetAsync(c => c.Id == id);
 
-                if (categoria == null)
-                {
-                    _logger.LogWarning($"Categoria com id= {id} não encontrada...");
-                    return NotFound($"Categoria com id= {id} não encontrada...");
-                }
-                return Ok(categoria);
-            }
-            catch (Exception)
+            if (categoria is null)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                           "Ocorreu um problema ao buscar as informações!.");
+                _logger.LogWarning($"Categoria com id= {id} não encontrada...");
+                return NotFound($"Categoria com id= {id} não encontrada...");
             }
+
+            var categoriaDto = categoria.ToCategoriaDTO();
+
+            return Ok(categoriaDto);
         }
 
         [HttpPost]
-        public ActionResult Post([FromBody] CategoriaDTO categoriaDto)
+        public async Task<ActionResult<CategoriaDTO>> Post(CategoriaDTO categoriaDto)
         {
-            try
+            if (categoriaDto is null)
             {
-                if (categoriaDto is null)
-                {
-                    _logger.LogWarning($"Dados inválidos...");
-                    return BadRequest("Dados inválidos");
-                }
-
-                _context.Add(categoriaDto);
-                _context.SaveChanges();
-
-                return new CreatedAtRouteResult("ObterCategoria",
-                    new { id = categoriaDto.Id }, categoriaDto);
-
+                _logger.LogWarning($"Dados inválidos...");
+                return BadRequest("Dados inválidos");
             }
-            catch (Exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                          "Ocorreu um problema ao buscar as informações!.");
-            }
-        }
 
-        // Esse método é para demonstrar como era utilizado antes da verção 2, na verção desse projeto o FromBody e a validação do ModelState já e feito de forma automática
-        [HttpPut]
-        public async Task<IActionResult> Update(int id, [FromBody] CategoriaDTO categoriaDto)
-        {
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    categoriaDto.Id = id;
-                    _context.Update(categoriaDto);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    return NotFound("Erro ao atualizar a categoria.");
-                }
-                return Ok(categoriaDto);
-            }
-            return BadRequest();
+            var categoria = categoriaDto.ToCategoria();
+
+            var categoriaCriada = _uof.CategoriaRepository.Create(categoria);
+            await _uof.Commit();
+
+            var novaCategoriaDto = categoriaCriada.ToCategoriaDTO();
+
+            return new CreatedAtRouteResult("ObterCategoria",
+                new { id = novaCategoriaDto.Id },
+                novaCategoriaDto);
         }
 
         [HttpPut("{id:int}")]
-        public ActionResult Put(int id, CategoriaDTO categoriaDto)
+        public async Task<ActionResult<CategoriaDTO>> Put(int id, CategoriaDTO categoriaDto)
         {
-            try
+            if (id != categoriaDto.Id)
             {
-                if (id != categoriaDto.Id)
-                {
-                    return BadRequest("Dados inválidos");
-                }
-                _context.Entry(categoriaDto).State = EntityState.Modified;
-                _context.SaveChanges();
-                return Ok(categoriaDto);
+                _logger.LogWarning($"Dados inválidos...");
+                return BadRequest("Dados inválidos");
             }
-            catch (Exception)
-            {
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                       "Ocorreu um problema ao buscar as informações!.");
-            }
+
+            var categoria = categoriaDto.ToCategoria();
+
+            var categoriaAtualizada = _uof.CategoriaRepository.Update(categoria);
+            await _uof.Commit();
+
+            var categoriaAtualizadaDto = categoriaAtualizada.ToCategoriaDTO();
+
+            return Ok(categoriaAtualizadaDto);
         }
 
         [HttpDelete("{id:int}")]
-        public ActionResult Delete(int id)
+        public async Task<ActionResult<CategoriaDTO>> Delete(int id)
         {
-            try
-            {
-                var categoria = _context.Categorias.FirstOrDefault(p => p.Id == id);
+            var categoria = await _uof.CategoriaRepository.GetAsync(c => c.Id == id);
 
-                if (categoria == null)
-                {
-                    _logger.LogWarning($"Categoria com id={id} não encontrada...");
-                    return NotFound($"Categoria com id={id} não encontrada...");
-                }
-
-                _context.Categorias.Remove(categoria);
-                _context.SaveChanges();
-                return Ok(categoria);
-            }
-            catch (Exception)
+            if (categoria is null)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                               "Ocorreu um problema ao buscar as informações!.");
+                _logger.LogWarning($"Categoria com id={id} não encontrada...");
+                return NotFound($"Categoria com id={id} não encontrada...");
             }
+
+            var categoriaExcluida = _uof.CategoriaRepository.Delete(categoria);
+            await _uof.Commit();
+
+            var categoriaExcluidaDto = categoriaExcluida.ToCategoriaDTO();
+
+            return Ok(categoriaExcluidaDto);
         }
     }
-
 }

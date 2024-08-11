@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
-namespace APICatalogo.Filters;
+namespace MyAPI.Filters;
 
 public class ApiExceptionFilter : IExceptionFilter
 {

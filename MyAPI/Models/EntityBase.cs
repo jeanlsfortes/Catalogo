@@ -12,7 +12,7 @@ namespace MyAPI.Models
 
         [Required]
         [StringLength(100)]
-        public string? Nome { get; set; } = string.Empty;
+        public string Nome { get; set; } = string.Empty;
 
         public DateTime CreateAt { get; set; }
         public DateTime? UpdateAt { get; set; }

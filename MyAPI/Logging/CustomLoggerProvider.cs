@@ -1,6 +1,6 @@
 ﻿using System.Collections.Concurrent;
 
-namespace APICatalogo.Logging;
+namespace MyAPI.Logging;
 
 public class CustomLoggerProvider : ILoggerProvider
 {

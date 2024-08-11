@@ -1,46 +1,97 @@
-﻿namespace APICatalogo.Logging;
-
-public class CustomerLogger : ILogger
+﻿namespace MyAPI.Logging
 {
-    readonly string loggerName;
-    readonly CustomLoggerProviderConfiguration loggerConfig;
-
-    public CustomerLogger(string name, CustomLoggerProviderConfiguration config)
+    public class CustomerLogger : ILogger
     {
-        loggerName = name;
-        loggerConfig = config;
-    }
+        private readonly string loggerName;
+        private readonly CustomLoggerProviderConfiguration loggerConfig;
+        private readonly string logFilePath = @"d:\dados\log\Macoratti_Log.txt";
 
-    public IDisposable BeginScope<TState>(TState state)
-    {
-        return null;
-    }
+        public CustomerLogger(string name, CustomLoggerProviderConfiguration config)
+        {
+            loggerName = name;
+            loggerConfig = config;
+        }
 
-    public bool IsEnabled(LogLevel logLevel)
-    {
-        return logLevel == loggerConfig.LogLevel;
-    }
+        public IDisposable? BeginScope<TState>(TState state) => null;
 
-    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state,
-            Exception exception, Func<TState, Exception, string> formatter)
-    {
-        string mensagem = $"{logLevel.ToString()}: {eventId.Id} - {formatter(state, exception)}";
+        IDisposable? ILogger.BeginScope<TState>(TState state) => null;
 
-        EscreverTextoNoArquivo(mensagem);
-    }
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return logLevel == loggerConfig.LogLevel;
+        }
 
-    private void EscreverTextoNoArquivo(string mensagem)
-    {
-        string caminhoArquivoLog = @"d:\dados\log\Macoratti_Log.txt";
-        using (StreamWriter streamWriter = new StreamWriter(caminhoArquivoLog, true))
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state,
+                Exception exception, Func<TState, Exception, string> formatter)
+        {
+            if (!IsEnabled(logLevel))
+            {
+                return;
+            }
+
+            if (formatter == null)
+            {
+                throw new ArgumentNullException(nameof(formatter));
+            }
+
+            string mensagem = $"{DateTime.Now} [{logLevel}] {eventId.Id} - {formatter(state, exception)}";
+
+            try
+            {
+                EscreverTextoNoArquivo(mensagem);
+            }
+            catch (Exception ex)
+            {
+                // Log de falha pode ser tratado aqui ou em um sistema de monitoramento
+                Console.Error.WriteLine($"Falha ao escrever no arquivo de log: {ex.Message}");
+            }
+        }
+
+        void ILogger.Log<TState>(LogLevel logLevel, EventId eventId, TState state, 
+            Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (!IsEnabled(logLevel))
+            {
+                return;
+            }
+
+            if (formatter == null)
+            {
+                throw new ArgumentNullException(nameof(formatter));
+            }
+
+            string mensagem = $"{DateTime.Now} [{logLevel}] {eventId.Id} - {formatter(state, exception)}";
+
+            try
+            {
+                EscreverTextoNoArquivo(mensagem);
+            }
+            catch (Exception ex)
+            {
+                // Log de falha pode ser tratado aqui ou em um sistema de monitoramento
+                Console.Error.WriteLine($"Falha ao escrever no arquivo de log: {ex.Message}");
+            }
+        }
+
+        private void EscreverTextoNoArquivo(string mensagem)
         {
             try
             {
-                streamWriter.WriteLine(mensagem);
-                streamWriter.Close();
+                using (StreamWriter streamWriter = new StreamWriter(logFilePath, true))
+                {
+                    streamWriter.WriteLine(mensagem);
+                }
             }
-            catch (Exception)
+            catch (IOException ioEx)
             {
+                // Tratamento específico para erros de IO
+                Console.Error.WriteLine($"Erro de IO ao tentar escrever no arquivo: {ioEx.Message}");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // Outros tipos de exceções
+                Console.Error.WriteLine($"Erro ao tentar escrever no arquivo: {ex.Message}");
                 throw;
             }
         }
