@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyAPI.Context;
 using MyAPI.DTO;
@@ -16,11 +17,13 @@ namespace MyAPI.Controllers
     public class CategoriasController : Controller
     {
         private readonly IUnitOfWork _uof;
+        private readonly IMapper _mapper;
         private readonly ILogger<CategoriasController> _logger;
 
-        public CategoriasController(IUnitOfWork uof, ILogger<CategoriasController> logger)
+        public CategoriasController(IUnitOfWork uof, IMapper mapper, ILogger<CategoriasController> logger)
         {
             _logger = logger;
+            _mapper = mapper;
             _uof = uof;
         }
 
@@ -30,7 +33,10 @@ namespace MyAPI.Controllers
             var categorias = await _uof.CategoriaRepository.GetAllAsync();
 
             if (categorias is null)
+            {
+                _logger.LogWarning("Não existem categorias...");
                 return NotFound("Não existem categorias...");
+            }
 
             var categoriasDto = categorias.ToCategoriaDTOList();
 
@@ -59,19 +65,29 @@ namespace MyAPI.Controllers
 
         private ActionResult<IEnumerable<CategoriaDTO>> ObterCategorias(IPagedList<Categoria> categorias)
         {
-            var metadata = new
+            try
             {
-                categorias.Count,
-                categorias.PageSize,
-                categorias.PageCount,
-                categorias.TotalItemCount,
-                categorias.HasNextPage,
-                categorias.HasPreviousPage
-            };
+                var metadata = new
+                {
+                    categorias.Count,
+                    categorias.PageSize,
+                    categorias.PageCount,
+                    categorias.TotalItemCount,
+                    categorias.HasNextPage,
+                    categorias.HasPreviousPage
+                };
 
-            Response.Headers.Append("X-Pagination", JsonConvert.SerializeObject(metadata));
-            var categoriasDto = categorias.ToCategoriaDTOList();
-            return Ok(categoriasDto);
+                Response.Headers.Append("X-Pagination", JsonConvert.SerializeObject(metadata));
+                var categoriasDto = categorias.ToCategoriaDTOList();
+
+                return Ok(categoriasDto);
+
+            }
+            catch (Exception ex) 
+            {
+                _logger.LogWarning($"Não foi possível obter as categorias : {ex.Message}");
+                return NotFound("Não foi possível obter as categorias");
+            }
         }
 
         [HttpGet("{id:int}", Name = "ObterCategoria")]
@@ -85,7 +101,7 @@ namespace MyAPI.Controllers
                 return NotFound($"Categoria com id= {id} não encontrada...");
             }
 
-            var categoriaDto = categoria.ToCategoriaDTO();
+            var categoriaDto = _mapper.Map<CategoriaDTO>(categoria);
 
             return Ok(categoriaDto);
         }
@@ -95,16 +111,16 @@ namespace MyAPI.Controllers
         {
             if (categoriaDto is null)
             {
-                _logger.LogWarning($"Dados inválidos...");
+                _logger.LogWarning("Dados inválidos...");
                 return BadRequest("Dados inválidos");
             }
 
-            var categoria = categoriaDto.ToCategoria();
+            var categoria = _mapper.Map<Categoria>(categoriaDto);
 
             var categoriaCriada = _uof.CategoriaRepository.Create(categoria);
             await _uof.Commit();
 
-            var novaCategoriaDto = categoriaCriada.ToCategoriaDTO();
+            var novaCategoriaDto = _mapper.Map<CategoriaDTO>(categoriaCriada);
 
             return new CreatedAtRouteResult("ObterCategoria",
                 new { id = novaCategoriaDto.Id },
@@ -116,16 +132,16 @@ namespace MyAPI.Controllers
         {
             if (id != categoriaDto.Id)
             {
-                _logger.LogWarning($"Dados inválidos...");
+                _logger.LogWarning("Dados inválidos...");
                 return BadRequest("Dados inválidos");
             }
 
-            var categoria = categoriaDto.ToCategoria();
+            var categoria = _mapper.Map<Categoria>(categoriaDto);
 
             var categoriaAtualizada = _uof.CategoriaRepository.Update(categoria);
             await _uof.Commit();
 
-            var categoriaAtualizadaDto = categoriaAtualizada.ToCategoriaDTO();
+            var categoriaAtualizadaDto = _mapper.Map<CategoriaDTO>(categoriaAtualizada);
 
             return Ok(categoriaAtualizadaDto);
         }
@@ -144,7 +160,7 @@ namespace MyAPI.Controllers
             var categoriaExcluida = _uof.CategoriaRepository.Delete(categoria);
             await _uof.Commit();
 
-            var categoriaExcluidaDto = categoriaExcluida.ToCategoriaDTO();
+            var categoriaExcluidaDto = _mapper.Map<CategoriaDTO>(categoriaExcluida);
 
             return Ok(categoriaExcluidaDto);
         }

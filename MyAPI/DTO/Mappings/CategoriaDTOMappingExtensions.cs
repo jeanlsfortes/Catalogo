@@ -11,33 +11,6 @@ namespace MyAPI.DTOs.Mappings;
 /// </summary>
 public static class CategoriaDTOMappingExtensions
 {
-    // mapeamento entre categoria e CategoriaDTO
-    public static CategoriaDTO? ToCategoriaDTO(this Categoria categoria)
-    {
-        if (categoria is null)
-            return null;
-
-        return new CategoriaDTO
-        {
-            Id = categoria.Id,
-            Nome = categoria.Nome,
-            ImagemUrl = categoria.ImagemUrl
-        };
-    }
-
-    // mapeamento entre CategoriaDTO e Categoria
-    public static Categoria? ToCategoria(this CategoriaDTO categoriaDto)
-    {
-        if (categoriaDto is null) return null;
-
-        return new Categoria
-        {
-            Id = categoriaDto.Id,
-            Nome = categoriaDto.Nome,
-            ImagemUrl = categoriaDto.ImagemUrl
-        };
-    }
-
     // mapeamento entre lista de Categoria e uma lista de CategoriaDTO
     public static IEnumerable<CategoriaDTO> ToCategoriaDTOList(this IEnumerable<Categoria> categorias)
     {

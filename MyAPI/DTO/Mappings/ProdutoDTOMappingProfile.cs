@@ -11,9 +11,6 @@ public class ProdutoDTOMappingProfile : Profile
         // Mapeamento bidirecional entre Produto e ProdutoDTO
         CreateMap<Produto, ProdutoDTO>().ReverseMap();
 
-        // Mapeamento bidirecional entre Categoria e CategoriaDTO
-        CreateMap<Categoria, CategoriaDTO>().ReverseMap();
-
         // Mapeamento bidirecional entre Produto e ProdutoDTOUpdateRequest
         CreateMap<Produto, ProdutoDTOUpdateRequest>().ReverseMap();
 

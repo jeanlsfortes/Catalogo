@@ -1,5 +1,4 @@
-﻿
-namespace MyAPI.Pagination;
+﻿namespace MyAPI.Pagination;
 
 public class PagedList<T>  : List<T> where T : class
 {

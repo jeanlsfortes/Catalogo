@@ -18,23 +18,27 @@ namespace MyAPI.Controllers
     {
         private readonly IUnitOfWork _uof;
         private readonly IMapper _mapper;
+        private readonly ILogger<ProdutosController> _logger;
 
-        public ProdutosController(IUnitOfWork uof, IMapper mapper)
+        public ProdutosController(IUnitOfWork uof, IMapper mapper, ILogger<ProdutosController> logger)
         {
             _uof = uof;
             _mapper = mapper;
+            _logger = logger;
         }
 
         [HttpGet("produtos/{id}")]
         public async Task<ActionResult<IEnumerable<ProdutoDTO>>> GetProdutosCategoria(int id)
         {
-            //instância da unidade de trabalho - foi utilizada para pegar o produto no banco
+
             var produtos = await _uof.ProdutoRepository.GetProdutosPorCategoriaAsync(id);
 
             if (produtos is null)
-                return NotFound();
+            {
+                _logger.LogWarning($"Não foi possível obter o produto {id}");
+                return NotFound("Não existem Produtos...");
+            }
 
-            // instância do mapper - converte a entidade Protuto para o DTO
             var produtosDto = _mapper.Map<IEnumerable<ProdutoDTO>>(produtos);
 
             return Ok(produtosDto);
@@ -58,19 +62,27 @@ namespace MyAPI.Controllers
         }
         private ActionResult<IEnumerable<ProdutoDTO>> ObterProdutos(IPagedList<Produto> produtos)
         {
-            var metadata = new
+            try
             {
-                produtos.Count,
-                produtos.PageSize,
-                produtos.PageCount,
-                produtos.TotalItemCount,
-                produtos.HasNextPage,
-                produtos.HasPreviousPage
-            };
+                var metadata = new
+                {
+                    produtos.Count,
+                    produtos.PageSize,
+                    produtos.PageCount,
+                    produtos.TotalItemCount,
+                    produtos.HasNextPage,
+                    produtos.HasPreviousPage
+                };
 
-            Response.Headers.Append("X-Pagination", JsonConvert.SerializeObject(metadata));
-            var produtosDto = _mapper.Map<IEnumerable<ProdutoDTO>>(produtos);
-            return Ok(produtosDto);
+                Response.Headers.Append("X-Pagination", JsonConvert.SerializeObject(metadata));
+                var produtosDto = _mapper.Map<IEnumerable<ProdutoDTO>>(produtos);
+                return Ok(produtosDto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($" ObterProdutos - Não foi possível obter os produtos : {ex.Message}");
+                return BadRequest("Não foi possível obter os produtos");
+            }
         }
 
         [HttpGet]
@@ -78,7 +90,10 @@ namespace MyAPI.Controllers
         {
             var produtos = await _uof.ProdutoRepository.GetAllAsync();
             if (produtos is null)
-                return NotFound();
+            {
+                _logger.LogWarning("Não existem Produtos...");
+                return NotFound("Não existem Produtos...");
+            }
 
             var produtosDto = _mapper.Map<IEnumerable<ProdutoDTO>>(produtos);
             return Ok(produtosDto);
@@ -90,6 +105,7 @@ namespace MyAPI.Controllers
             var produto = await _uof.ProdutoRepository.GetAsync(c => c.Id == id);
             if (produto is null)
             {
+                _logger.LogWarning("Get - Produto não encontrado...");
                 return NotFound("Produto não encontrado...");
             }
             var produtoDto = _mapper.Map<ProdutoDTO>(produto);
@@ -100,7 +116,10 @@ namespace MyAPI.Controllers
         public async Task<ActionResult<ProdutoDTO>> Post(ProdutoDTO produtoDto)
         {
             if (produtoDto is null)
-                return BadRequest();
+            {
+                _logger.LogWarning("Dados inválidos...");
+                return BadRequest("Dados inválidos");
+            }
 
             var produto = _mapper.Map<Produto>(produtoDto);
 
@@ -118,7 +137,10 @@ namespace MyAPI.Controllers
             JsonPatchDocument<ProdutoDTOUpdateRequest> patchProdutoDto)
         {
             if (patchProdutoDto == null || id <= 0)
-                return BadRequest();
+            {
+                _logger.LogWarning($"Dados inválidos...");
+                return BadRequest("Dados inválidos");
+            }
 
             var produto = await _uof.ProdutoRepository.GetAsync(c => c.Id == id);
 
@@ -130,7 +152,10 @@ namespace MyAPI.Controllers
             patchProdutoDto.ApplyTo(produtoUpdateRequest, (IObjectAdapter)ModelState);
 
             if (!ModelState.IsValid || !TryValidateModel(produtoUpdateRequest))
+            {
+                _logger.LogWarning(ModelState.ToString());
                 return BadRequest(ModelState);
+            }
 
             _mapper.Map(produtoUpdateRequest, produto);
 
@@ -144,7 +169,10 @@ namespace MyAPI.Controllers
         public async Task<ActionResult<ProdutoDTO>> Put(int id, ProdutoDTO produtoDto)
         {
             if (id != produtoDto.Id)
-                return BadRequest();
+            {
+                _logger.LogWarning($"Dados inválidos...");
+                return BadRequest("Dados inválidos");
+            }
 
             var produto = _mapper.Map<Produto>(produtoDto);
 
@@ -162,7 +190,8 @@ namespace MyAPI.Controllers
             var produto = await _uof.ProdutoRepository.GetAsync(p => p.Id == id);
             if (produto is null)
             {
-                return NotFound("Produto não encontrado...");
+                _logger.LogWarning("Produto não encontrado");
+                return NotFound("Produto não encontrado.");
             }
 
             var produtoDeletado = _uof.ProdutoRepository.Delete(produto);

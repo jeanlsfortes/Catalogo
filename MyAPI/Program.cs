@@ -4,6 +4,7 @@ using MyAPI.Logging;
 using MyAPI.Repositories;
 using Microsoft.EntityFrameworkCore;
 using MyAPI.Context;
+using MyAPI.DTO.Mappings;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,12 +20,11 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(sqlServerConnection));
 
 builder.Services.AddScoped<ApiLoggingFilter>();
-
-
 builder.Services.AddScoped<ApiLoggingFilter>();
 
 builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
 builder.Services.AddScoped<IProdutoRepository, ProdutoRepository>();
+
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
@@ -34,6 +34,7 @@ builder.Logging.AddProvider(new CustomLoggerProvider(new CustomLoggerProviderCon
 }));
 
 builder.Services.AddAutoMapper(typeof(ProdutoDTOMappingProfile));
+builder.Services.AddAutoMapper(typeof(CategoriaDTOMappingProfile));
 
 
 var app = builder.Build();

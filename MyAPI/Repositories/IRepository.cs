@@ -1,7 +1,4 @@
-﻿using MyAPI.Models;
-using MyAPI.Pagination;
-using System.Linq.Expressions;
-using X.PagedList;
+﻿using System.Linq.Expressions;
 
 namespace MyAPI.Repositories;
 
