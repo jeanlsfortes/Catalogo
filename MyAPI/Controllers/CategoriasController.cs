@@ -53,14 +53,17 @@ namespace MyAPI.Controllers
         }
 
         [HttpGet("filter/nome/pagination")]
-        public async Task<ActionResult<IEnumerable<CategoriaDTO>>> GetCategoriasFiltradas(
-                                       [FromQuery] CategoriasFiltroNome categoriasFiltro)
+        public async Task<ActionResult<IEnumerable<CategoriaDTO>>> GetCategoriasFiltradas([FromQuery] CategoriasFiltroNome categoriasFiltro)
         {
-            var categoriasFiltradas = await _uof.CategoriaRepository
-                                         .GetCategoriasFiltroNomeAsync(categoriasFiltro);
+            var categoriasFiltradas = await _uof.CategoriaRepository.GetCategoriasFiltroNomeAsync(categoriasFiltro);
 
-            return ObterCategorias(categoriasFiltradas);
+            if (categoriasFiltradas == null || !categoriasFiltradas.Any())
+            {
+                _logger.LogWarning("Nenhuma categoria encontrada com os filtros fornecidos.");
+                return NotFound("Nenhuma categoria encontrada com os filtros fornecidos.");
+            }
 
+            return Ok(_mapper.Map<IEnumerable<CategoriaDTO>>(categoriasFiltradas));
         }
 
         private ActionResult<IEnumerable<CategoriaDTO>> ObterCategorias(IPagedList<Categoria> categorias)
